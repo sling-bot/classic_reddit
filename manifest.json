@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "Old Reddit Restyle",
+  "version": "1.2.0",
+  "description": "Renders www.reddit.com feeds in the old.reddit.com layout. No login, no extra requests.",
+  "content_scripts": [
+    {
+      "matches": [
+        "*://www.reddit.com/",
+        "*://www.reddit.com/hot*",
+        "*://www.reddit.com/new*",
+        "*://www.reddit.com/top*",
+        "*://www.reddit.com/rising*",
+        "*://www.reddit.com/best*",
+        "*://www.reddit.com/r/*",
+        "*://www.reddit.com/user/*"
+      ],
+      "exclude_matches": [
+        "*://www.reddit.com/r/*/s/*"
+      ],
+      "css": [
+        "hide.css",
+        "oldreddit.css"
+      ],
+      "js": [
+        "vendor/hls.min.js",
+        "content.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "images/reddit-logo.png"
+      ],
+      "matches": [
+        "*://www.reddit.com/*"
+      ]
+    }
+  ],
+  "version_name": "1.2 beta"
+}

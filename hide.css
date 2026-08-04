@@ -1,0 +1,13 @@
+/* Applied by the browser before Reddit paints anything, so new Reddit
+   never flashes on screen.
+
+   opacity, NOT display:none - the page must stay laid out so the browser
+   keeps loading posts into it. That feed is our data source. */
+
+html.or-hide body > *:not(#or-root) {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Escape hatch: if content.js never gets going, this class is removed
+   and Reddit comes back rather than leaving a blank page. */
