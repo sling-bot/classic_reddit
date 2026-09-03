@@ -1,0 +1,769 @@
+/* Old reddit's look. This is a frozen target - once it's right,
+   it should never need to change again. */
+
+#or-root {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  z-index: 2147483647;
+  font: normal 12px verdana, arial, helvetica, sans-serif;
+  background: #fff;
+  color: #000;
+
+  /* --- width knobs ---------------------------------------------
+     Old reddit was fully fluid: the feed filled the window and the
+     sidebar sat at a fixed 300px. That's the default here.
+     Set --or-content-max to e.g. 1100px if very long title lines
+     bother you on a wide monitor. */
+  --or-content-max: none;   /* the feed column */
+  --or-media-max: 960px;    /* expanded images and video */
+  --or-text-max: 900px;     /* expanded self-post text */
+  --or-side-width: 300px;   /* the sidebar */
+
+  /* Old reddit's arrow: triangular head over a stem, cut out of a plain
+     coloured box with clip-path. An SVG mask was tried first and failed
+     invisibly - a mask that doesn't resolve clips the element away
+     entirely. A bad clip-path just leaves a square, which is visible. */
+  --or-arrow-idle: #c6c6c6;
+  --or-arrow-hover: #9a9a9a;
+
+  /* --- comment knobs ---
+     Tune against a plain old-reddit thread, not one with custom
+     subreddit CSS. */
+  --or-comment-font: 13px;    /* body text */
+  --or-comment-meta: 10px;    /* tagline and action links */
+  --or-comment-line: 1.45;    /* body line-height */
+  --or-comment-indent: 20px;  /* indent per reply level */
+  --or-comment-gutter: 24px;  /* left gutter inside each comment */
+  --or-user-gap: 11px;        /* space between user-page rows */
+  --or-comment-gap: 11px;     /* space between comments */
+  --or-vote-drop: 5px;        /* how far the arrows sit below the tagline */
+}
+
+/* Our UI lives inside Reddit's document, so Reddit's stylesheet applies to
+   our elements too. This neutralises inherited backgrounds, fonts and
+   spacing before our own rules run.
+
+   Wrapped in :where() so the whole selector has ZERO specificity - every
+   rule below, however plainly written, still wins. */
+/* Everything under #or-root is now our own markup - feeds, comments and
+   user pages are all rendered, nothing is borrowed - so the reset applies
+   without exceptions. */
+:where(#or-root, #or-root *) {
+  background: none;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  line-height: normal;
+  text-align: left;
+  letter-spacing: normal;
+  box-sizing: border-box;
+}
+
+#or-inner { padding: 0 0 40px; }
+#or-body { padding: 12px 12px 0; }
+
+#or-body { display: flex; align-items: flex-start; gap: 16px; }
+#or-content { flex: 1 1 auto; min-width: 0; max-width: var(--or-content-max); }
+#or-side {
+  /* Scales with the viewport so the column moves as the window resizes,
+     rather than parking at a fixed width. --or-side-width is the cap. */
+  flex: 0 0 clamp(200px, 20vw, var(--or-side-width));
+  width: auto;
+}
+
+/* Narrow windows: sidebar drops below rather than squeezing the feed. */
+@media (max-width: 1100px) {
+  #or-body { flex-wrap: wrap; }
+  #or-side { flex-basis: 100%; width: auto; }
+  #or-content { max-width: none; }
+}
+
+.or-empty { padding: 20px 0 20px 78px; color: #888; }
+
+.or-thing { display: flex; align-items: flex-start; margin-bottom: 10px; }
+
+.or-rank {
+  width: 34px;
+  text-align: right;
+  padding: 6px 4px 0 0;
+  color: #c6c6c6;
+  font-size: 14px;
+  flex: none;
+}
+
+.or-mid { width: 44px; padding-top: 4px; flex: none; text-align: center; }
+
+.or-arrow {
+  width: 15px;
+  height: 14px;
+  margin: 1px auto;
+  cursor: pointer;
+  border: 0;
+  background-color: var(--or-arrow-idle);
+  -webkit-clip-path: polygon(50% 0, 100% 55%, 66% 55%, 66% 100%, 34% 100%, 34% 55%, 0 55%);
+  clip-path: polygon(50% 0, 100% 55%, 66% 55%, 66% 100%, 34% 100%, 34% 55%, 0 55%);
+}
+.or-arrow:hover { background-color: var(--or-arrow-hover); }
+.or-down { transform: rotate(180deg); }
+
+.or-score {
+  font-size: 11px;
+  font-weight: bold;
+  color: #336699;
+  padding: 2px 0;
+  white-space: nowrap;
+}
+
+.or-thumb { flex: none; margin-right: 8px; }
+.or-thumb img {
+  width: 70px;
+  height: 50px;
+  object-fit: cover;
+  border: 1px solid #ddd;
+  display: block;
+}
+.or-thumb-blank {
+  width: 70px;
+  height: 50px;
+  background: #f6f6f6;
+  border: 1px solid #ddd;
+  font-size: 9px;
+  color: #aaa;
+  text-align: center;
+  line-height: 50px;
+}
+
+.or-entry { padding-top: 2px; }
+
+.or-title { font-size: 16px; color: #0000ff; text-decoration: none; }
+.or-title:visited { color: #551a8b; }
+.or-title:hover { text-decoration: underline; }
+
+.or-domain { font-size: 10px; color: #888; }
+
+.or-tagline { font-size: 10px; color: #888; margin-top: 2px; }
+.or-tagline a, .or-buttons a { color: #888; text-decoration: none; }
+.or-tagline a:hover, .or-buttons a:hover { text-decoration: underline; }
+
+.or-buttons { font-size: 10px; font-weight: bold; margin-top: 2px; }
+
+#or-nav { margin: 20px 0 0 78px; }
+#or-nav button {
+  font: normal 12px verdana, sans-serif;
+  color: #369;
+  background: #fff;
+  border: 1px solid #369;
+  border-radius: 3px;
+  padding: 3px 10px;
+  margin-right: 6px;
+  cursor: pointer;
+}
+#or-nav button:disabled { color: #ccc; border-color: #ddd; cursor: default; }
+
+/* ---- expando ---- */
+
+.or-expando {
+  display: inline-block;
+  width: 21px;
+  height: 21px;
+  line-height: 19px;
+  text-align: center;
+  border: 1px solid #c7c7c7;
+  background: #f6f6f6;
+  color: #808080;
+  font: bold 13px monospace;
+  cursor: pointer;
+  vertical-align: middle;
+  margin-right: 8px;
+  border-radius: 2px;
+  user-select: none;
+}
+.or-expando:hover { border-color: #888; color: #444; }
+
+.or-panel { margin: 8px 0 4px; }
+
+.or-media {
+  max-width: var(--or-media-max);
+  max-height: 80vh;
+  height: auto;
+  display: block;
+  border: 1px solid #ddd;
+  background: #f6f6f6;
+}
+
+.or-gnav { margin: 0 0 6px; font-size: 11px; color: #888; }
+.or-gnav button {
+  font: normal 11px verdana, sans-serif;
+  color: #369;
+  background: #fff;
+  border: 1px solid #369;
+  border-radius: 3px;
+  padding: 1px 7px;
+  margin: 0 6px 0 0;
+  cursor: pointer;
+}
+.or-gnav span { margin-right: 6px; }
+
+/* ---- self post body ---- */
+
+.or-md {
+  max-width: var(--or-text-max);
+  padding: 8px 10px;
+  border: 1px solid #e0e0e0;
+  background: #fafafa;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #000;
+}
+.or-md p { margin: 0 0 10px; }
+.or-md p:last-child { margin-bottom: 0; }
+.or-md a { color: #0000ff; }
+.or-md a:visited { color: #551a8b; }
+.or-md ul, .or-md ol { margin: 0 0 10px; padding-left: 22px; }
+.or-md li { margin-bottom: 3px; }
+.or-md blockquote {
+  border-left: 2px solid #c5c1ad;
+  margin: 0 0 10px;
+  padding-left: 8px;
+  color: #444;
+}
+.or-md code {
+  font: normal 12px monospace;
+  background: #f0f0f0;
+  padding: 0 2px;
+}
+.or-md pre {
+  background: #f0f0f0;
+  padding: 6px;
+  overflow-x: auto;
+  margin: 0 0 10px;
+}
+.or-md h1, .or-md h2, .or-md h3,
+.or-md h4, .or-md h5, .or-md h6 {
+  font-size: 14px;
+  margin: 0 0 6px;
+}
+.or-md hr { border: none; border-top: 1px solid #ddd; margin: 10px 0; }
+
+/* ---- video ---- */
+
+video.or-media { background: #000; }
+
+.or-note {
+  font-size: 10px;
+  color: #888;
+  margin-top: 4px;
+  font-style: italic;
+}
+
+
+/* ---- subreddit sidebar ---- */
+
+.or-submit {
+  display: block;
+  text-align: center;
+  padding: 6px 0;
+  margin-bottom: 8px;
+  background: #f0f0f0;
+  border: 1px solid #c7c7c7;
+  border-radius: 3px;
+  color: #369;
+  text-decoration: none;
+  font-size: 12px;
+}
+.or-submit:hover { background: #e8e8e8; text-decoration: none; }
+
+.or-search { margin-bottom: 10px; }
+.or-search input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px 6px;
+  border: 1px solid #c7c7c7;
+  border-radius: 3px;
+  font: normal 12px verdana, arial, sans-serif;
+}
+
+.or-box {
+  border: 1px solid #ccc;
+  background: #fff;
+  border-radius: 3px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+}
+
+.or-boxhead {
+  font-size: 13px;
+  font-weight: bold;
+  color: #369;
+  margin: 0 0 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #eee;
+}
+
+.or-subtitle { font-size: 11px; color: #888; margin-bottom: 6px; }
+.or-desc { font-size: 12px; line-height: 1.4; margin: 0 0 8px; }
+
+.or-stat { font-size: 11px; color: #888; margin-top: 2px; }
+.or-statnum { color: #000; font-weight: bold; }
+
+.or-rules { margin: 0; padding-left: 20px; font-size: 12px; }
+.or-rules li { margin-bottom: 8px; }
+.or-ruletitle { font-weight: bold; color: #000; }
+
+.or-rulebody {
+  max-width: none;
+  border: none;
+  background: none;
+  padding: 4px 0 0;
+  font-size: 11px;
+  color: #444;
+}
+.or-rulebody ul { padding-left: 16px; margin: 0; }
+.or-rulebody p { margin: 0 0 4px; }
+
+
+/* ---- old reddit header ---- */
+
+#or-topbar {
+  background: #f0f0f0;
+  border-bottom: 1px solid #ccc;
+  padding: 2px 8px;
+  font-size: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.or-topnav a {
+  color: #369;
+  text-decoration: none;
+  text-transform: uppercase;
+  margin-right: 10px;
+}
+.or-topnav a:hover { text-decoration: underline; }
+.or-topright { color: #888; }
+#or-status { margin-right: 10px; }
+#or-topbar button {
+  font: normal 10px verdana, sans-serif;
+  background: none;
+  border: none;
+  color: #369;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+/* Logo and tabs share one blue band, tabs sitting on the bottom edge -
+   the way old reddit's #header-bottom-left was laid out. */
+#or-brand {
+  background: #cee3f8;
+  border-bottom: 1px solid #5f99cf;
+  padding: 8px 10px 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+}
+#or-logo { height: 38px; width: auto; display: block; margin-bottom: 4px; }
+#or-srname {
+  font-size: 18px;
+  font-weight: bold;
+  color: #369;
+  text-decoration: none;
+  margin-bottom: 6px;
+}
+#or-srname:hover { text-decoration: underline; }
+
+#or-tabs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+#or-tabs li { display: inline-block; margin: 0; }
+#or-tabs a {
+  display: inline-block;
+  padding: 4px 9px 4px;
+  color: #369;
+  text-decoration: none;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 3px 3px 0 0;
+}
+#or-tabs a:hover { text-decoration: underline; }
+#or-tabs li.or-tab-on a {
+  background: #fff;
+  color: #ff4500;
+  border-color: #5f99cf;
+  position: relative;
+  bottom: -1px;   /* sit over the band's bottom border, like old reddit */
+}
+
+/* ---- third-party embeds ---- */
+
+.or-embed {
+  max-width: var(--or-media-max);
+  aspect-ratio: 16 / 9;
+  border: 1px solid #ddd;
+  background: #000;
+}
+.or-embed iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+/* ---- time range picker (shown on /top) ---- */
+
+#or-timebar {
+  background: #fff;
+  border-bottom: 1px solid #ddd;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: #000;
+}
+
+#or-timesel {
+  display: inline-block;
+  position: relative;
+}
+#or-timesel > summary {
+  display: inline-block;
+  cursor: pointer;
+  font-weight: bold;
+  text-decoration: underline;
+  list-style: none;
+  color: #000;
+}
+#or-timesel > summary::-webkit-details-marker { display: none; }
+#or-timesel > summary::after { content: ' ▾'; text-decoration: none; }
+
+#or-timesel ul {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  z-index: 10;
+  margin: 2px 0 0;
+  padding: 3px 0;
+  min-width: 150px;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #369;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, .2);
+}
+#or-timesel li { margin: 0; }
+#or-timesel a {
+  display: block;
+  padding: 3px 12px;
+  color: #369;
+  text-decoration: none;
+  white-space: nowrap;
+}
+#or-timesel a:hover { background: #eff7ff; text-decoration: underline; }
+
+/* ---- comments page ---- */
+
+.or-pheader { display: flex; align-items: flex-start; margin: 12px 0 16px; }
+.or-pscore {
+  flex: none;
+  width: 44px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: bold;
+  color: #336699;
+  padding-top: 3px;
+}
+.or-pmain { flex: 1 1 auto; min-width: 0; }
+.or-pbody { margin-top: 8px; }
+
+.or-cbuttons { font-size: 10px; font-weight: bold; margin: 2px 0 0; }
+.or-cbuttons a { color: #888; text-decoration: none; }
+.or-cbuttons a:hover { text-decoration: underline; }
+
+
+
+
+
+
+/* ---- comments ----
+   Our own markup now. Nesting is real DOM nesting so the dotted guide
+   lines form unbroken verticals; indenting by margin alone would break
+   the line at every gap. */
+
+#or-ctree { margin-top: 2px; }
+
+.or-c { margin: 0 0 var(--or-comment-gap); }
+
+.or-chead {
+  font-size: var(--or-comment-meta);
+  color: #888;
+  line-height: 1.4;
+}
+.or-ctoggle {
+  border: 0;
+  background: none;
+  padding: 0 3px 0 0;
+  color: #888;
+  font: normal var(--or-comment-meta) monospace;
+  cursor: pointer;
+}
+.or-cauthor { color: #369; font-weight: bold; text-decoration: none; }
+.or-cauthor:hover { text-decoration: underline; }
+/* Score sits beside the username - the whole reason this is rebuilt. */
+.or-cscore { color: #888; margin-left: 4px; }
+.or-ctime { color: #888; margin-left: 4px; }
+
+/* Arrows sit left of the whole comment - tagline included - so the
+   flex row wraps everything, not just the body. */
+.or-crow { display: flex; align-items: flex-start; gap: 5px; }
+/* Old reddit doesn't top-align the arrows with the [-] - they sit a few
+   pixels lower, straddling the tagline/body boundary. --or-vote-drop is
+   that offset. */
+.or-cvote { flex: 0 0 15px; padding-top: var(--or-vote-drop); }
+.or-cmain { min-width: 0; flex: 1; }
+.or-ctext { max-width: var(--or-text-max); }
+
+.or-ctext .or-md {
+  border: none;
+  background: none;
+  padding: 0;
+  max-width: none;
+  font-size: var(--or-comment-font);
+  line-height: var(--or-comment-line);
+}
+.or-ctext .or-md p { margin: 0 0 8px; }
+.or-ctext .or-md p:last-child { margin-bottom: 0; }
+
+.or-clinks { font-size: var(--or-comment-meta); font-weight: bold; margin-top: 2px; }
+.or-clinks a { color: #888; text-decoration: none; margin-right: 8px; }
+.or-clinks a:hover { text-decoration: underline; }
+
+/* the dotted verticals */
+.or-ckids {
+  margin-left: 7px;
+  padding-left: 12px;
+  border-left: 1px dotted #d0d0d0;
+}
+.or-ckids:empty { display: none; border: 0; }
+
+/* Collapsed keeps the tagline visible and hides the rest, as old reddit
+   did - so the arrows go too, since there's nothing to vote on. */
+.or-collapsed > .or-crow .or-ctext,
+.or-collapsed > .or-crow .or-cvote,
+.or-collapsed > .or-ckids { display: none; }
+
+.or-cmore { font-size: var(--or-comment-meta); margin: 2px 0 6px; }
+/* A button styled as a link - it expands in place rather than navigating,
+   but should read like old reddit's text link. */
+.or-cmorebtn {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: #369;
+  font: bold var(--or-comment-meta) verdana, arial, helvetica, sans-serif;
+  cursor: pointer;
+}
+.or-cmorebtn:hover { text-decoration: underline; }
+.or-cmorebtn:disabled { color: #999; cursor: default; text-decoration: none; }
+.or-cdim { color: #888; margin-left: 4px; }
+/* Escape hatch to the real thread, for when the inline control isn't there. */
+.or-cmorelink { color: #888; margin-left: 8px; text-decoration: none; }
+.or-cmorelink:hover { text-decoration: underline; }
+
+/* post / comments divider, with the sort control */
+#or-cbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 8px;
+  padding: 6px 0;
+  border-top: 1px solid #d0d0d0;
+  border-bottom: 1px solid #d0d0d0;
+  font-size: var(--or-comment-meta);
+  color: #888;
+}
+
+#or-cnav { margin: 14px 0; }
+#or-cnav button {
+  font-size: 11px;
+  padding: 3px 10px;
+  border: 1px solid #c5c1ad;
+  background: #f0f0f0;
+  cursor: pointer;
+}
+#or-cnav button:disabled { color: #999; cursor: default; }
+
+/* post header on a comments page */
+.or-pheader { display: flex; align-items: flex-start; gap: 6px; margin-bottom: 4px; }
+.or-pscore { flex: 0 0 40px; text-align: center; }
+.or-pnum { font-size: 11px; font-weight: bold; color: #888; }
+.or-pmain { min-width: 0; flex: 1; }
+.or-ptitle { color: #0000ff; font-size: 16px; text-decoration: none; }
+.or-ptitle:visited { color: #551a8b; }
+.or-ptitle:hover { text-decoration: underline; }
+.or-plinks { font-size: var(--or-comment-meta); font-weight: bold; color: #888; margin-top: 3px; }
+
+
+/* ---- user pages ----
+   Rebuilt from Reddit's data rather than restyled, so this is ordinary
+   markup under our own reset - no !important, no fighting card padding.
+   Density is a knob because old reddit was much tighter than Reddit is. */
+
+#or-ufeed { margin-top: 4px; }
+
+.or-urow {
+  font: normal var(--or-comment-font) verdana, arial, helvetica, sans-serif;
+  margin: 0 0 var(--or-user-gap);
+  line-height: 1.35;
+}
+
+/* the parent-post line above a comment */
+.or-uhead { margin-bottom: 1px; }
+.or-ulink {
+  color: #0000ff;
+  font-size: 14px;
+  text-decoration: none;
+}
+.or-ulink:visited { color: #551a8b; }
+.or-ulink:hover { text-decoration: underline; }
+.or-udim { color: #888; font-size: 10px; }
+.or-udim a { color: #369; font-weight: bold; text-decoration: none; }
+.or-udomain { color: #888; font-size: 10px; }
+
+/* [-] author N points time */
+.or-utag {
+  font-size: 10px;
+  color: #888;
+  margin-bottom: 2px;
+}
+.or-uauthor { color: #369; font-weight: bold; text-decoration: none; }
+.or-utag a { color: #369; text-decoration: none; }
+.or-utag a:hover { text-decoration: underline; }
+
+.or-ubody { margin: 2px 0 2px; max-width: var(--or-text-max); }
+.or-ubody p { margin: 0 0 6px; }
+
+.or-ulinks { font-size: 10px; font-weight: bold; }
+.or-ulinks a {
+  color: #888;
+  text-decoration: none;
+  margin-right: 8px;
+}
+.or-ulinks a:hover { text-decoration: underline; }
+
+/* posts get a score column, comments do not */
+.or-upost { display: flex; align-items: flex-start; gap: 6px; }
+.or-uscore {
+  min-width: 40px;
+  text-align: right;
+  font-size: 11px;
+  font-weight: bold;
+  color: #888;
+  padding-top: 2px;
+}
+.or-umain { min-width: 0; flex: 1; }
+
+.or-uexpando {
+  display: inline-block;
+  margin: 0 0 2px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #369;
+  font: normal 11px monospace;
+  cursor: pointer;
+}
+
+#or-unav { margin: 12px 0; }
+#or-umore {
+  font-size: 11px;
+  padding: 3px 10px;
+  border: 1px solid #c5c1ad;
+  background: #f0f0f0;
+  cursor: pointer;
+}
+#or-umore:disabled { color: #999; cursor: default; }
+
+/* --- sort dropdown --- */
+.or-sortmenu { display: inline-block; position: relative; }
+.or-sortmenu summary {
+  list-style: none;
+  cursor: pointer;
+  font-weight: bold;
+  color: #000;
+}
+.or-sortmenu summary::-webkit-details-marker { display: none; }
+.or-sortmenu summary::after { content: ' \25be'; color: #369; }
+.or-sortmenu ul {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  z-index: 20;
+  background: #fff;
+  border: 1px solid #c5c1ad;
+  padding: 2px 0;
+  min-width: 110px;
+}
+.or-sortmenu li { list-style: none; }
+.or-sortmenu li a {
+  display: block;
+  padding: 2px 10px;
+  color: #369;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.or-sortmenu li a:hover { background: #eff7ff; }
+
+/* --- karma sidebar --- */
+#or-side .or-username { font-size: 14px; font-weight: bold; margin-bottom: 6px; }
+#or-side .or-karma { font-size: 12px; line-height: 1.6; }
+#or-side .or-karma b { font-size: 14px; }
+#or-side .or-age { font-size: 10px; color: #888; margin-top: 8px; }
+
+/* Comment bodies on profiles are bare text - .or-md's box is right for a
+   feed expando panel but wrong here, so it's undone rather than restyled. */
+.or-ubody {
+  border: none;
+  background: none;
+  padding: 0;
+  max-width: none;
+}
+
+/* pagination */
+#or-unav { margin: 14px 0; display: flex; align-items: center; gap: 10px; }
+#or-unav button {
+  font-size: 11px;
+  padding: 3px 10px;
+  border: 1px solid #c5c1ad;
+  background: #f0f0f0;
+  cursor: pointer;
+}
+#or-unav button:disabled { color: #999; cursor: default; }
+.or-upage { font-size: 10px; color: #888; }
+
+/* Profiles aren't ranked, so renderRow's rank span is passed an empty
+   string - but the element still reserves its width and pushed every post
+   row right of the comment rows. Remove it and the columns line up. */
+#or-ufeed .or-rank { display: none; }
+#or-ufeed .or-thing { margin: 0 0 var(--or-user-gap); }
+
+/* A little more air - old reddit was dense but not cramped. */
+.or-urow { line-height: 1.4; }
+.or-uhead { margin-bottom: 2px; }
+.or-utag { margin-bottom: 4px; }
+.or-ubody { margin: 4px 0 5px; line-height: 1.45; }
+.or-ubody p { margin: 0 0 8px; }
+.or-ubody p:last-child { margin-bottom: 0; }
+.or-ulinks { margin-top: 2px; }
+
+/* Comment rows get the same left vote gutter as posts, with the body
+   indented to sit beside it - matching old reddit's layout. Arrows were
+   previously only on posts, which is why a comment-heavy profile looked
+   like it had none at all. */
+.or-ucols { display: flex; align-items: flex-start; gap: 5px; }
+.or-uvote { flex: 0 0 15px; padding-top: 2px; }
+.or-ubody-col { min-width: 0; flex: 1; max-width: var(--or-text-max); }
