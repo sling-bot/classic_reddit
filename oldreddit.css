@@ -30,14 +30,14 @@
   /* --- comment knobs ---
      Tune against a plain old-reddit thread, not one with custom
      subreddit CSS. */
-  --or-comment-font: 13px;    /* body text */
+  --or-comment-font: 14px;    /* body text */
   --or-comment-meta: 10px;    /* tagline and action links */
-  --or-comment-line: 1.45;    /* body line-height */
+  --or-comment-line: 1.55;    /* body line-height */
   --or-comment-indent: 20px;  /* indent per reply level */
   --or-comment-gutter: 24px;  /* left gutter inside each comment */
   --or-user-gap: 11px;        /* space between user-page rows */
-  --or-comment-gap: 11px;     /* space between comments */
-  --or-vote-drop: 5px;        /* how far the arrows sit below the tagline */
+  --or-comment-gap: 10px;     /* space before each comment, sibling or reply */
+  --or-vote-drop: 1px;        /* how far the arrows sit below the tagline */
 }
 
 /* Our UI lives inside Reddit's document, so Reddit's stylesheet applies to
@@ -60,10 +60,16 @@
   text-align: left;
   letter-spacing: normal;
   box-sizing: border-box;
+  /* <button> keeps native OS widget sizing (a baked-in minimum height)
+     no matter what padding/border you set, unless appearance is
+     stripped too - this is what was inflating every custom button
+     (the [-] toggle, "load more comments", "embed") past its font size. */
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 #or-inner { padding: 0 0 40px; }
-#or-body { padding: 12px 12px 0; }
+#or-body { padding: 12px 12px 0 4px; }
 
 #or-body { display: flex; align-items: flex-start; gap: 16px; }
 #or-content { flex: 1 1 auto; min-width: 0; max-width: var(--or-content-max); }
@@ -83,18 +89,27 @@
 
 .or-empty { padding: 20px 0 20px 78px; color: #888; }
 
-.or-thing { display: flex; align-items: flex-start; margin-bottom: 10px; }
+.or-thing {
+  display: flex;
+  align-items: flex-start;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  margin-left: -6px;
+  border-bottom: 1px solid #e5e5e5;
+}
 
 .or-rank {
   width: 34px;
   text-align: right;
-  padding: 6px 4px 0 0;
+  padding: 0 4px 0 0;
   color: #c6c6c6;
   font-size: 14px;
+  font-weight: bold;
   flex: none;
+  align-self: center;
 }
 
-.or-mid { width: 44px; padding-top: 4px; flex: none; text-align: center; }
+.or-mid { width: 44px; flex: none; text-align: center; align-self: center; }
 
 .or-arrow {
   width: 15px;
@@ -108,35 +123,56 @@
 }
 .or-arrow:hover { background-color: var(--or-arrow-hover); }
 .or-down { transform: rotate(180deg); }
+/* Comments want a hair more breathing room between the up/down arrows
+   than the feed's post arrows do - scoped to comments only. */
+.or-cvote .or-up { margin-bottom: 2px; }
 
 .or-score {
-  font-size: 11px;
-  font-weight: bold;
-  color: #336699;
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--or-arrow-idle);
   padding: 2px 0;
   white-space: nowrap;
+  /* The global reset sets text-align:left directly on every element
+     (a direct declaration always beats an inherited one, no matter how
+     specific the ancestor's rule is) - .or-mid's text-align:center never
+     actually reached this element without restating it here. */
+  text-align: center;
 }
 
-.or-thumb { flex: none; margin-right: 8px; }
+/* .or-thumb's own box ends up taller than the image inside it (a flex
+   sizing quirk that didn't resolve with align-self alone) - rather than
+   fight that, .or-thumb centers its own content directly, so the image
+   lands in the middle of whatever height the box actually gets. */
+.or-thumb {
+  flex: none;
+  margin-left: 4px;
+  margin-right: 8px;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.or-thumb a { display: block; }
 .or-thumb img {
-  width: 70px;
-  height: 50px;
+  width: 90px;
+  height: 64px;
   object-fit: cover;
   border: 1px solid #ddd;
   display: block;
 }
 .or-thumb-blank {
-  width: 70px;
-  height: 50px;
+  width: 90px;
+  height: 64px;
   background: #f6f6f6;
   border: 1px solid #ddd;
   font-size: 9px;
   color: #aaa;
   text-align: center;
-  line-height: 50px;
+  line-height: 64px;
 }
 
-.or-entry { padding-top: 2px; }
+.or-entry { align-self: flex-start; padding-top: 2px; }
 
 .or-title { font-size: 16px; color: #0000ff; text-decoration: none; }
 .or-title:visited { color: #551a8b; }
@@ -152,6 +188,10 @@
 
 #or-nav { margin: 20px 0 0 78px; }
 #or-nav button {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 0;
+  height: auto;
   font: normal 12px verdana, sans-serif;
   color: #369;
   background: #fff;
@@ -166,6 +206,9 @@
 /* ---- expando ---- */
 
 .or-expando {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 0;
   display: inline-block;
   width: 21px;
   height: 21px;
@@ -196,6 +239,10 @@
 
 .or-gnav { margin: 0 0 6px; font-size: 11px; color: #888; }
 .or-gnav button {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 0;
+  height: auto;
   font: normal 11px verdana, sans-serif;
   color: #369;
   background: #fff;
@@ -496,36 +543,50 @@ video.or-media { background: #000; }
 
 #or-ctree { margin-top: 2px; }
 
-.or-c { margin: 0 0 var(--or-comment-gap); }
+/* Top margin, not bottom: a bottom margin only ever separates a comment
+   from what follows its OWN subtree, so a reply nested directly under
+   its parent got no space at all. A top margin lands before every
+   comment alike, sibling or reply. */
+.or-c { margin: var(--or-comment-gap) 0 0; }
 
 .or-chead {
   font-size: var(--or-comment-meta);
   color: #888;
   line-height: 1.4;
+  margin-left: -1px;
 }
 .or-ctoggle {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 0;
+  height: auto;
   border: 0;
   background: none;
-  padding: 0 3px 0 0;
+  padding: 0;
   color: #888;
   font: normal var(--or-comment-meta) monospace;
   cursor: pointer;
 }
 .or-cauthor { color: #369; font-weight: bold; text-decoration: none; }
 .or-cauthor:hover { text-decoration: underline; }
+/* Old reddit highlights the submitter's own comments: a filled badge on
+   the username itself, plus a separate [S] tag beside it. */
+.or-op { background: #5f99cf; color: #fff; padding: 0 3px; }
+.or-op:hover { text-decoration: none; }
+.or-optag { color: #369; font-weight: bold; }
 /* Score sits beside the username - the whole reason this is rebuilt. */
 .or-cscore { color: #888; margin-left: 4px; }
 .or-ctime { color: #888; margin-left: 4px; }
 
 /* Arrows sit left of the whole comment - tagline included - so the
    flex row wraps everything, not just the body. */
-.or-crow { display: flex; align-items: flex-start; gap: 5px; }
+.or-crow { display: flex; align-items: flex-start; gap: 7px; }
 /* Old reddit doesn't top-align the arrows with the [-] - they sit a few
    pixels lower, straddling the tagline/body boundary. --or-vote-drop is
    that offset. */
 .or-cvote { flex: 0 0 15px; padding-top: var(--or-vote-drop); }
 .or-cmain { min-width: 0; flex: 1; }
-.or-ctext { max-width: var(--or-text-max); }
+.or-ctext { max-width: var(--or-text-max); margin-top: 3px; }
 
 .or-ctext .or-md {
   border: none;
@@ -538,9 +599,37 @@ video.or-media { background: #000; }
 .or-ctext .or-md p { margin: 0 0 8px; }
 .or-ctext .or-md p:last-child { margin-bottom: 0; }
 
-.or-clinks { font-size: var(--or-comment-meta); font-weight: bold; margin-top: 2px; }
+.or-clinks { font-size: var(--or-comment-meta); font-weight: bold; margin-top: 6px; }
 .or-clinks a { color: #888; text-decoration: none; margin-right: 8px; }
 .or-clinks a:hover { text-decoration: underline; }
+/* A button styled to match the plain-text links beside it. */
+.or-cembedbtn {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 0;
+  height: auto;
+  border: 0;
+  background: none;
+  padding: 0;
+  margin-right: 8px;
+  color: #888;
+  font: bold var(--or-comment-meta) verdana, arial, helvetica, sans-serif;
+  cursor: pointer;
+}
+.or-cembedbtn:hover { text-decoration: underline; }
+
+.or-cembedbox { margin: 4px 0; }
+.or-cembedbox textarea {
+  display: block;
+  width: 100%;
+  max-width: 500px;
+  height: 70px;
+  border: 1px solid #d0d0d0;
+  padding: 4px;
+  font: normal 11px monospace;
+  color: #333;
+  resize: vertical;
+}
 
 /* the dotted verticals */
 .or-ckids {
@@ -556,10 +645,14 @@ video.or-media { background: #000; }
 .or-collapsed > .or-crow .or-cvote,
 .or-collapsed > .or-ckids { display: none; }
 
-.or-cmore { font-size: var(--or-comment-meta); margin: 2px 0 6px; }
+.or-cmore { font-size: var(--or-comment-meta); margin: 9px 0; }
 /* A button styled as a link - it expands in place rather than navigating,
    but should read like old reddit's text link. */
 .or-cmorebtn {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 0;
+  height: auto;
   border: 0;
   background: none;
   padding: 0;

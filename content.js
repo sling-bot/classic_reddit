@@ -454,6 +454,14 @@
     return d.innerHTML;
   }
 
+  function fmtScore(n) {
+    if (!Number.isFinite(n)) return n;
+    const abs = Math.abs(n);
+    if (abs >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'm';
+    if (abs >= 1e3) return (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'k';
+    return String(n);
+  }
+
   function renderRow(post, rank) {
     const label = { link: 'link', image: 'image', video: 'video',
                     gallery: 'gallery' }[post.type] || 'self';
@@ -465,7 +473,7 @@
         <span class="or-rank">${rank}</span>
         <div class="or-mid">
           <div class="or-arrow or-up"></div>
-          <div class="or-score">${post.score}</div>
+          <div class="or-score">${fmtScore(post.score)}</div>
           <div class="or-arrow or-down"></div>
         </div>
         <div class="or-thumb">${thumb}</div>
@@ -1065,6 +1073,7 @@
   const comments = new Map();      /* id -> comment, insertion order */
   let commentsDrawn = false;
   let postHeaderDone = false;
+  let currentPost = null;
 
   function captureComments() {
     let added = 0;
@@ -1101,10 +1110,38 @@
     return added;
   }
 
+  /* Permalinks come off Reddit's own attributes, sometimes as a bare
+     path - fine for our own links, but an embed snippet gets copied
+     elsewhere, so it needs a real absolute URL. */
+  function absUrl(path) {
+    return path && path.startsWith('http') ? path : `https://www.reddit.com${path || ''}`;
+  }
+
+  function embedSnippet(c) {
+    const sub = currentPost ? currentPost.subreddit : '';
+    const href = absUrl(c.permalink);
+    return `<blockquote class="reddit-embed-bq" style="height:316px" data-embed-height="316">`
+      + `<a href="${href}">Comment</a>`
+      + ` by <a href="https://www.reddit.com/user/${esc(c.author)}/">u/${esc(c.author)}</a>`
+      + (sub ? ` in <a href="https://www.reddit.com/${esc(sub)}/">${esc(sub)}</a>` : '')
+      + `</blockquote>\n`
+      + `<script async src="https://embed.reddit.com/widgets.js" charset="UTF-8"></script>`;
+  }
+
   function commentHtml(c, isShut) {
     const score = Number.isFinite(c.score)
-      ? `${c.score} point${c.score === 1 ? '' : 's'}`
+      ? `${fmtScore(c.score)} point${c.score === 1 ? '' : 's'}`
       : '';
+    const isOp = !!(currentPost && c.author
+      && c.author.toLowerCase() === currentPost.author.toLowerCase());
+    const author = isOp
+      ? `<a class="or-cauthor or-op" href="/user/${esc(c.author)}/">${esc(c.author)}</a> <span class="or-optag">[S]</span>`
+      : `<a class="or-cauthor" href="/user/${esc(c.author)}/">${esc(c.author)}</a>`;
+    /* Parent of a top-level comment is the post itself - old reddit still
+       shows a "parent" link there, it just points at the submission. */
+    const parentHref = c.parent && comments.has(c.parent)
+      ? comments.get(c.parent).permalink
+      : (currentPost ? currentPost.permalink : c.permalink);
     /* The vote column is a sibling of EVERYTHING else, not just the body -
        old reddit puts the arrows to the left of the tagline, the text and
        the links alike. Nesting them beside the body alone starts them a
@@ -1119,7 +1156,7 @@
           <div class="or-chead">
             <button class="or-ctoggle" type="button" data-cid="${c.id}">${
               isShut ? '[+]' : '[&ndash;]'}</button>
-            <a class="or-cauthor" href="/user/${esc(c.author)}/">${esc(c.author)}</a>
+            ${author}
             <span class="or-cscore">${score}</span>
             <span class="or-ctime">${ago(c.created)}</span>
           </div>
@@ -1128,7 +1165,10 @@
             <div class="or-clinks">
               <a href="${c.permalink}">permalink</a>
               <a href="${c.permalink}?context=3">context</a>
+              <a href="${parentHref}">parent</a>
+              <button type="button" class="or-cembedbtn" data-embed-id="${c.id}">embed</button>
             </div>
+            <div class="or-cembedbox" data-embedbox="${c.id}" hidden></div>
           </div>
         </div>
       </div>`;
@@ -1203,8 +1243,33 @@
       if (more) {
         e.preventDefault();
         expandReplies(more.dataset.moreId, more);
+        return;
+      }
+
+      const embedBtn = e.target.closest('.or-cembedbtn');
+      if (embedBtn) {
+        e.preventDefault();
+        toggleEmbed(embedBtn.dataset.embedId);
       }
     });
+  }
+
+  function toggleEmbed(id) {
+    const slot = document.getElementById('or-ctree');
+    const box = slot && slot.querySelector(`.or-cembedbox[data-embedbox="${id}"]`);
+    if (!box) return;
+    if (box.hidden) {
+      if (!box.dataset.filled) {
+        const c = comments.get(id);
+        box.innerHTML = c ? `<textarea readonly>${esc(embedSnippet(c))}</textarea>` : '';
+        box.dataset.filled = '1';
+        const ta = box.querySelector('textarea');
+        if (ta) ta.addEventListener('click', () => ta.select());
+      }
+      box.hidden = false;
+    } else {
+      box.hidden = true;
+    }
   }
 
   /* Reddit's own control lives beside the permalink we captured. Look it
@@ -1262,7 +1327,7 @@
       <div class="or-pheader">
         <div class="or-pscore">
           <div class="or-arrow or-up"></div>
-          <div class="or-pnum">${post.score}</div>
+          <div class="or-pnum">${fmtScore(post.score)}</div>
           <div class="or-arrow or-down"></div>
         </div>
         <div class="or-pmain">
@@ -1271,7 +1336,7 @@
           <div class="or-tagline">
             submitted ${ago(post.created)} by
             <a href="/user/${esc(post.author)}/">${esc(post.author)}</a>
-            to <a href="/${esc(post.sub)}/">${esc(post.sub)}</a>
+            to <a href="/${esc(post.subreddit)}/">${esc(post.subreddit)}</a>
           </div>
           ${expando}
           <div class="or-panel" data-panel="${post.id}" hidden></div>
@@ -1306,6 +1371,7 @@
     const post = extract(el);
     if (!post || !post.id) return;
     store.set(post.id, post);
+    currentPost = post;
 
     head.innerHTML = postHeaderHtml(post);
     postHeaderDone = true;
@@ -1516,7 +1582,7 @@
             <div class="or-ubody-col">
               <div class="or-utag">[&ndash;]
                 <a class="or-uauthor" href="/user/${esc(USER)}/">${esc(USER)}</a>
-                ${score === null ? '' : `${score} point${score === 1 ? '' : 's'}`}
+                ${score === null ? '' : `${fmtScore(score)} point${score === 1 ? '' : 's'}`}
                 ${ago(it.created)}
               </div>
               <div class="or-md or-ubody">${it.body}</div>
